@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model Registration {
+  id                 String   @id @default(uuid())
+  teamName           String
+  teamSize           Int
+  pptLink            String
+  videoLink          String
+  paymentScreenshot  String   // cloudinary URL
+  registrationStatus String   @default("pending")
+
+  leaderId String @unique
+  leader   Participant @relation("LeaderRelation", fields: [leaderId], references: [id])
+
+  members Participant[] @relation("MemberRelation")
+
+  createdAt DateTime @default(now())
+}
+
+model Participant {
+  id                   String @id @default(uuid())
+  firstName            String
+  lastName             String
+  email                String
+  mobile               String
+  gender               String
+  instituteName        String
+  type                 String
+  course               String
+  courseSpecialization String
+  graduationYear       String
+  isAcesMember         Boolean
+  receipt              String? // cloudinary URL
+
+  registrationLeader Registration? @relation("LeaderRelation")
+  registrationMemberId String?
+  registrationMember   Registration? @relation("MemberRelation", fields: [registrationMemberId], references: [id])
+}
