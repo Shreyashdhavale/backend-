@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import {prisma}  from "../config/prisma";
+import { prisma } from "../config/prisma";
 
 export const registerTeam = async (req: Request, res: Response) => {
   try {
@@ -14,19 +14,12 @@ export const registerTeam = async (req: Request, res: Response) => {
       registrationStatus,
     } = req.body;
 
-    // Basic validation
     if (!paymentScreenshot) {
       return res.status(400).json({
         message: "Payment screenshot URL required",
       });
     }
 
-    // Create Leader
-    const leaderRecord = await prisma.participant.create({
-      data: leader,
-    });
-
-    // Create Registration
     const registration = await prisma.registration.create({
       data: {
         teamName,
@@ -35,27 +28,28 @@ export const registerTeam = async (req: Request, res: Response) => {
         videoLink,
         paymentScreenshot,
         registrationStatus,
-        leaderId: leaderRecord.id,
+
+        // ✅ Create Leader (nested)
+        leader: {
+          create: leader,
+        },
+
+        // ✅ Create Members (nested bulk)
+        members: {
+          create: teamMembers,
+        },
       },
     });
 
-    // Create Members
-    for (const member of teamMembers) {
-      await prisma.participant.create({
-        data: {
-          ...member,
-          registrationMemberId: registration.id,
-        },
-      });
-    }
-
-    res.json({
+    return res.status(201).json({
       success: true,
       message: "Registration saved successfully",
+      registrationId: registration.id,
     });
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
