@@ -38,7 +38,6 @@ model Participant {
   course               String
   courseSpecialization String
   graduationYear       String
-  isAcesMember         Boolean
   receipt              String?
 
   // ✅ Leader back relation (no FK here)
