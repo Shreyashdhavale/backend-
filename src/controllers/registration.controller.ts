@@ -20,6 +20,27 @@ export const registerTeam = async (req: Request, res: Response) => {
       });
     }
 
+    // Step 1: Create leader participant first
+    const createdLeader = await prisma.participant.create({
+      data: leader,
+    });
+
+    // Step 2: Create members
+    const createdMembers = await prisma.participant.createMany({
+      data: teamMembers ?? [],
+    });
+
+    // Step 3: Fetch created member IDs
+    const memberRecords = await prisma.participant.findMany({
+      where: {
+        email: { in: (teamMembers ?? []).map((m: any) => m.email) },
+      },
+      select: { id: true },
+    });
+
+    const memberIds = memberRecords.map((m:any) => m.id);
+
+    // Step 4: Create registration with linked IDs
     const registration = await prisma.registration.create({
       data: {
         teamName,
@@ -28,16 +49,8 @@ export const registerTeam = async (req: Request, res: Response) => {
         videoLink,
         paymentScreenshot,
         registrationStatus,
-
-        // ✅ Create Leader (nested)
-        leader: {
-          create: leader,
-        },
-
-        // ✅ Create Members (nested bulk)
-        members: {
-          create: teamMembers,
-        },
+        leaderId: createdLeader.id,
+        memberIds: memberIds,
       },
     });
 

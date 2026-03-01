@@ -3,31 +3,31 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 model Registration {
-  id                 String   @id @default(uuid())
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
   teamName           String
   teamSize           Int
   pptLink            String
   videoLink          String
   paymentScreenshot  String
   registrationStatus String   @default("pending")
+  createdAt          DateTime @default(now())
 
-  // ✅ Leader Relation (1–1)
-  leaderId String @unique
-  leader   Participant @relation("LeaderRelation", fields: [leaderId], references: [id])
+  // 1-1 Leader
+  leaderId String      @unique @db.ObjectId
+  leader   Participant @relation("LeaderRelation", fields: [leaderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  // ✅ Members Relation (1–many)
-  members Participant[] @relation("MemberRelation")
-
-  createdAt DateTime @default(now())
+  // 1-many Members — Registration stores the array of IDs
+  memberIds String[]      @db.ObjectId
+  members   Participant[] @relation("MemberRelation", fields: [memberIds], references: [id])
 }
 
 model Participant {
-  id                   String @id @default(uuid())
+  id                   String  @id @default(auto()) @map("_id") @db.ObjectId
   firstName            String
   lastName             String
   email                String
@@ -40,12 +40,10 @@ model Participant {
   graduationYear       String
   receipt              String?
 
-  // ✅ Leader back relation (no FK here)
+  // back-relations only — no fields/references needed on this side
   registrationLeader Registration? @relation("LeaderRelation")
 
-  // ✅ Member foreign key (important)
-  registrationMemberId String?
-  registrationMember   Registration? @relation("MemberRelation", fields: [registrationMemberId], references: [id])
-
-  @@index([registrationMemberId]) // 🔥 performance boost
+  // For MemberRelation, Participant side holds the back-reference IDs
+  registrationMemberIds String[]      @db.ObjectId
+  registrationMember    Registration[] @relation("MemberRelation", fields: [registrationMemberIds], references: [id])
 }
