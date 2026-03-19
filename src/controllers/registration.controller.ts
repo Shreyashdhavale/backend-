@@ -15,34 +15,29 @@ export const registerTeam = async (req: Request, res: Response) => {
     } = req.body;
 
     if (!paymentScreenshot) {
-      return res.status(400).json({ message: "Payment screenshot URL required" });
+      return res.status(400).json({
+        message: "Payment screenshot URL required",
+      });
     }
 
-    // Step 1: Create leader
-    const createdLeader = await prisma.participant.create({
-      data: leader,
-    });
-
-    // Step 2: Create members one by one (no createMany — it uses transactions)
-    const createdMembers = await Promise.all(
-      (teamMembers ?? []).map((member: any) =>
-        prisma.participant.create({ data: member })
-      )
-    );
-
-    const memberIds = createdMembers.map((m) => m.id);
-
-    // Step 3: Create registration
     const registration = await prisma.registration.create({
       data: {
         teamName,
         teamSize,
         pptLink,
-        videoLink,
+        videoLink: videoLink ?? null,
         paymentScreenshot,
         registrationStatus,
-        leaderId: createdLeader.id,
-        memberIds: memberIds,
+
+        // ✅ Create Leader (nested)
+        leader: {
+          create: leader,
+        },
+
+        // ✅ Create Members (nested bulk)
+        members: {
+          create: teamMembers,
+        },
       },
     });
 
@@ -54,6 +49,8 @@ export const registerTeam = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };
